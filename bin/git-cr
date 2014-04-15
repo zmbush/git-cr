@@ -1,1 +1,31 @@
 #!/usr/bin/env ruby
+
+require 'octokit'
+
+token = `git config --get cr.token`.strip
+
+if `git config --get cr.enterprise`.strip == "true"
+  Octokit.api_endpoint = `git config --get cr.api-endpoint`.strip
+  Octokit.web_endpoint = `git config --get cr.web-endpoint`.strip
+end
+
+github = Octokit::Client.new access_token: token
+
+repo_url = `git config --get remote.origin.url`.strip
+
+repo = repo_url.gsub(/.git$/, '').split(/[\/:]/).last(2).join('/')
+
+prs = github.pull_requests(repo)
+
+prs.each do |pr|
+  pr_num = pr.number
+  puts "##{pr_num}"
+  comm = github.review_comments(repo, pr_num)
+  comm.each do |c|
+    puts "@#{c.user.login}: #{c.body}"
+  end
+  comm = github.issue_comments(repo, pr_num)
+  comm.each do |c|
+    puts "@#{c.user.login}: #{c.body}"
+  end
+end
